@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Head from 'next/head'
-
+import NavBar from './component/NavBar'
+  
 export default function Home() {
   const [url, setUrl] = useState('')
   const [favicon, setFavicon] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [selectedSize, setSelectedSize] = useState(16)
   const sizes = [16, 32, 48, 64, 128, 256]
   const extractDomain = (url) => {
     try {
@@ -103,6 +103,7 @@ export default function Home() {
       </Head>
 
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        <NavBar />
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
           <motion.div
