@@ -7,7 +7,8 @@ export default function Home() {
   const [favicon, setFavicon] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
+  const [selectedSize, setSelectedSize] = useState(16)
+  const sizes = [16, 32, 48, 64, 128, 256]
   const extractDomain = (url) => {
     try {
       const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
@@ -34,16 +35,26 @@ export default function Home() {
     setFavicon(null)
 
     try {
-      const response = await fetch(`/api/favicon?domain=${encodeURIComponent(domain)}`)
-      const data = await response.json()
-      
-      if (data.success) {
-        setFavicon({
-          url: data.faviconUrl,
-          domain: data.domain
-        })
+      const faviconPromises = sizes.map(async (size) => {
+        const response = await fetch(`/api/favicon?domain=${encodeURIComponent(domain)}&size=${size}`)
+        const data = await response.json()
+        if (data.success) {
+          return {
+            size,
+            url: data.faviconUrl,
+            domain: data.domain
+          }
+        }
+        return null
+      })
+
+      const results = await Promise.all(faviconPromises)
+      const validFavicons = results.filter(result => result !== null)
+
+      if (validFavicons.length > 0) {
+        setFavicon(validFavicons)
       } else {
-        setError(data.error || 'No favicon found for this website')
+        setError('No favicon found for this website')
       }
     } catch (err) {
       setError('Failed to fetch favicon. Please try again.')
@@ -58,11 +69,11 @@ export default function Home() {
     }
   }
 
-  const downloadFavicon = async () => {
-    if (favicon) {
+  const downloadFavicon = async (domain, size) => {
+    if (domain) {
       try {
-        const response = await fetch(`/api/download-favicon?domain=${encodeURIComponent(favicon.domain)}`)
-        
+        const response = await fetch(`/api/download-favicon?domain=${encodeURIComponent(domain)}&size=${size}`)
+
         if (!response.ok) {
           throw new Error('Download failed')
         }
@@ -71,7 +82,7 @@ export default function Home() {
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
-        link.download = `${favicon.domain}-favicon.ico`
+        link.download = `${domain}-favicon-${size}x${size}.ico`
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
@@ -104,9 +115,9 @@ export default function Home() {
               Favi-Kool
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              The coolest way to snatch favicons from any website. 
+              The coolest way to snatch favicons from any website.
               <br className="hidden sm:block" />
-              Paste a URL and watch the magic happen! ✨
+              Paste a URL and watch the magic happen!
             </p>
           </motion.div>
 
@@ -124,7 +135,7 @@ export default function Home() {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Paste something... Kool ��"
+                  placeholder="Paste something... Kool"
                   className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none transition-all duration-200 text-lg"
                 />
                 <motion.button
@@ -140,7 +151,7 @@ export default function Home() {
                       Fetching...
                     </div>
                   ) : (
-                    'Fetch Favicon ��'
+                    'Fetch Favicon'
                   )}
                 </motion.button>
               </div>
@@ -165,54 +176,60 @@ export default function Home() {
 
           {/* Result Section */}
           <AnimatePresence>
-            {favicon && (
+            {favicon && favicon?.length && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.4 }}
-                className="max-w-2xl mx-auto h-screen"
+                className="max-w-7xl mx-auto"
               >
-                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100 ">
                   <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                    Here's your favicon! 🎉
+                    Here's your favicons!
                   </h2>
-                  
-                  <div className="flex flex-col items-center gap-6">
-                    {/* Favicon Preview */}
-                    <div className="bg-gray-50 rounded-xl p-6 border-2 border-dashed border-gray-200">
-                      <img
-                        src={favicon.url}
-                        alt={`Favicon for ${favicon.domain}`}
-                        className="w-16 h-16 mx-auto"
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                          setError('Failed to load favicon preview')
-                        }}
-                      />
-                    </div>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6'>
+                    {favicon.map(fav => (
+                      <div
+                        key={fav?.url}
+                        className="flex flex-col items-center gap-4 ">
+                        {/* Favicon Preview */}
+                        <div className="bg-gray-50 rounded-xl p-6 border-2 border-dashed border-gray-200">
+                          <img
+                            src={fav?.url}
+                            alt={`Favicon for ${fav?.domain}`}
+                            className="w-16 h-16 mx-auto"
+                            onError={(e) => {
+                              e.target.style.display = 'none'
+                              setError('Failed to load favicon preview')
+                            }}
+                          />
+                        </div>
 
-                    {/* Domain Info */}
-                    <div className="text-center">
-                      <p className="text-gray-600 mb-2">Domain:</p>
-                      <p className="text-lg font-semibold text-gray-800 bg-gray-50 px-4 py-2 rounded-lg">
-                        {favicon.domain}
-                      </p>
-                    </div>
+                        {/* Domain Info */}
+                        <div className="text-center">
+                          <p className="text-lg font-semibold text-gray-800 bg-gray-50 px-4 py-2 rounded-lg">
+                            {fav?.domain} {fav?.size}x{fav?.size}
+                          </p>
+                        </div>
 
-                    {/* Download Button */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={downloadFavicon}
-                      className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-200 shadow-lg"
-                    >
-                      Download Favicon 💾
-                    </motion.button>
+                        {/* Download Button */}
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => downloadFavicon(fav?.domain, fav?.size)}
+                          className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-200 shadow-lg"
+                        >
+                          Download
+                        </motion.button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </motion.div>
-            )}
+            )
+
+            }
           </AnimatePresence>
 
           {/* Footer */}

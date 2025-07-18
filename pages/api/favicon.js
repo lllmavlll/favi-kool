@@ -3,16 +3,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { domain } = req.query
+  const { domain, size } = req.query
 
   if (!domain) {
     return res.status(400).json({ error: 'Domain parameter is required' })
   }
 
   try {
-    const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}`
-    
-    const response = await fetch(faviconUrl, { 
+    const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`
+
+    const response = await fetch(faviconUrl, {
       method: 'HEAD',
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; FaviKool/1.0)'
@@ -23,19 +23,20 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         faviconUrl: faviconUrl,
-        domain: domain
+        domain: domain,
+        size: size
       })
     } else {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'No favicon found for this domain' 
+        error: 'No favicon found for this domain'
       })
     }
   } catch (error) {
     console.error('Favicon fetch error:', error)
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-      error: 'Failed to fetch favicon' 
+      error: 'Failed to fetch favicon'
     })
   }
 } 
